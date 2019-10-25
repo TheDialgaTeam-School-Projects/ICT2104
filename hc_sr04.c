@@ -1,6 +1,6 @@
+#include "msp.h"
 #include "hc_sr04.h"
-
-#define UINT16_MAX_VALUE (1 << 16) - 1;
+#include "timer32_delay.h"
 
 volatile uint8_t capture_index = 0;
 volatile uint16_t capture_offset = 0;
@@ -60,15 +60,15 @@ void setup_ultrasonic_capture_timer(void)
     NVIC->ISER[0] |= 1 << ((TA0_N_IRQn) & 31);
 }
 
-void trigger_ultrasonic_sensor(void)
+void trigger_ultrasonic_sensor(const hc_sr04_config *config)
 {
     // Trigger the ultrasonic sensor for 10us.
-    P4->OUT |= BIT3;
+    *config->trigger_port_out |= config->trigger_port_pin;
 
     delay_us(10);
 
     // Reset the trigger.
-    P4->OUT &= ~BIT3;
+    *config->trigger_port_out &= ~config->trigger_port_pin;
 
     // Reset timer to zero.
     TIMER_A0->CTL |= TACLR;
@@ -87,34 +87,15 @@ uint16_t get_object_distance(void)
     return capture_distance;
 }
 
-void delay_us(const uint32_t amount)
-{
-    // Set Timer32 to 1 microseconds.
-    TIMER32_1->LOAD = SystemCoreClock / 1000000;
-
-    // Set Timer32 to periodic warping mode.
-    TIMER32_1->CONTROL = 0xC2;
-
-    volatile int count = amount;
-
-    for (count = amount; count > 0; count--) {
-        /* wait until the RAW_IFG is set */
-        while((TIMER32_1->RIS & 1) == 0);
-
-        /* clear RAW_IFG flag */
-        TIMER32_1->INTCLR = 0;
-    }
-}
-
 void TA0_N_IRQHandler(void)
 {
     if (TIMER_A0->CTL & TIMER_A_CTL_IFG) {
         // Overflow interrupt triggered.
         if (capture_index == 1) {
             if (capture_offset == 0) {
-                capture_offset = UINT16_MAX_VALUE - capture_time[0];
+                capture_offset = (1 << 16) - 1 - capture_time[0];
             } else {
-                capture_offset += UINT16_MAX_VALUE;
+                capture_offset += (1 << 16) - 1;
             }
         }
 
@@ -131,7 +112,7 @@ void TA0_N_IRQHandler(void)
             capture_time[capture_index] = TIMER_A0->CCR[1];
 
             if ((TIMER_A0->CCTL[1] & TIMER_A_CCTLN_COV) == TIMER_A_CCTLN_COV) {
-                // Second interrupt happened but the software is too slow hence this data is corrupted and shall be ignored.
+                // Second interrupt happened before the input is read causing the data to be corrupted. Ignore this.
                 TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_COV;
             } else {
                 capture_distance = (capture_time[1] + capture_offset - capture_time[0]) / (SystemCoreClock / 1000000) / 58;
