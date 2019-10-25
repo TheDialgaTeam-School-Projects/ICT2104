@@ -1,7 +1,5 @@
-#ifndef __HC_SR04_H__
-#define __HC_SR04_H__
-
-#include "msp.h"
+#ifndef HC_SR04_H_
+#define HC_SR04_H_
 
 /*
  * Ultrasonic HC-SR04 PIN CONFIGURATION
@@ -24,12 +22,10 @@ typedef struct {
 } hc_sr04_config;
 
 void initialize_ultrasonic_sensor(const hc_sr04_config *config, const uint16_t threshold);
-void trigger_ultrasonic_sensor(void);
+void trigger_ultrasonic_sensor(const hc_sr04_config *config);
 
 uint8_t is_object_found(void);
 uint16_t get_object_distance(void);
-
-void delay_us(const uint32_t amount);
 
 void TA0_N_IRQHandler(void);
 
