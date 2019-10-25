@@ -2,8 +2,8 @@
 
 void setup_turbidity(void){
     // GPIO Setup
-    P1->OUT &= ~BIT0;                       // Clear LED to start
-    P1->DIR |= BIT0;                        // Set P1.0/LED to output
+    P2->OUT &= ~( BIT0 | BIT1 | BIT2 );                       // Clear LED to start
+    P2->DIR |= ( BIT0 | BIT1 | BIT2 );                        // Set P2/LED to output
 
     DATA_PORT->DIR &= ~DATA_PIN;                // Analog Input
     DATA_PORT->SEL1 |= DATA_PIN;                // Configure P4.0 for ADC
@@ -24,7 +24,7 @@ void setup_turbidity(void){
         ADC14_CTL0_SSEL__ACLK |                 // ACLK
         ADC14_CTL0_DIV__1 |                     // /1
         ADC14_CTL0_CONSEQ_0 |                   // Single-channel, single-conversion
-        ADC14_CTL0_SHT0__4 |                    // Sample and hold time 4 CLKs
+        ADC14_CTL0_SHT0__8 |                    // Sample and hold time 4 CLKs
         ADC14_CTL0_ON;                          // powered up
 
     ADC14->CTL1 |= ADC14_CTL1_RES__14BIT;       //Select 14-bit resolution
@@ -50,4 +50,10 @@ void setup_turbidity(void){
 void turbidity_capture(void){
     // Start sampling/conversion
     ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
+}
+
+//Calculate turbidity %. Higher the percentage, the higher the turbidity of water.
+int calculate_turbidity(float adcVoltage, float clearVoltage){
+
+    return 100 - (adcVoltage/clearVoltage) * 100;
 }

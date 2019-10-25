@@ -9,6 +9,8 @@
 
 #define DATA_PORT P4
 #define DATA_PIN BIT0
+#define voltCLEAR 3.3f
 
 void setup_turbidity(void);
 void turbidity_capture(void);
+int calculate_turbidity(float adcVoltage, float clearVoltage);
