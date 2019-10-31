@@ -11,7 +11,6 @@ typedef struct {
     int pin;
   } onewire_t;
 
-//########################################################################
 
 int onewire_reset(onewire_t *ow);
 void onewire_write_bit(onewire_t *ow, int bit);

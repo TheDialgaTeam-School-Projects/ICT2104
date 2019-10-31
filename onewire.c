@@ -2,10 +2,6 @@
 #include "delay.h"
 #include "onewire.h"
 
-//#####################################################################
-//#####################################################################
-
-/// @return: 0 if ok
 int onewire_reset(onewire_t *ow)
 {
   onewire_line_low(ow);
@@ -18,7 +14,6 @@ int onewire_reset(onewire_t *ow)
   return 0;
 }
 
-//#####################################################################
 
 void onewire_write_bit(onewire_t *ow, int bit)
 {
@@ -29,14 +24,13 @@ void onewire_write_bit(onewire_t *ow, int bit)
   else
     DELAY_US(64); // min 60us
   onewire_line_release(ow);
-  // rest of the write slot
+  // rest of bits to write slot
   if (bit)
     DELAY_US(64);
   else
     DELAY_US(6);
 }
 
-//#####################################################################
 
 int onewire_read_bit(onewire_t *ow)
 {
@@ -51,7 +45,6 @@ int onewire_read_bit(onewire_t *ow)
   return bit;
 }
 
-//#####################################################################
 
 void onewire_write_byte(onewire_t *ow, uint8_t byte)
 {
@@ -63,7 +56,6 @@ void onewire_write_byte(onewire_t *ow, uint8_t byte)
   }
 }
 
-//#####################################################################
 
 uint8_t onewire_read_byte(onewire_t *ow)
 {
@@ -77,8 +69,7 @@ uint8_t onewire_read_byte(onewire_t *ow)
   return byte;
 }
 
-//#####################################################################
-
+// output with pulldown
 inline void onewire_line_low(onewire_t *ow)
 {
   *(ow->port_dir) |= ow->pin;
@@ -86,8 +77,7 @@ inline void onewire_line_low(onewire_t *ow)
   *(ow->port_ren) &= ~ow->pin;
 }
 
-//#####################################################################
-
+// output with pullup
 inline void onewire_line_high(onewire_t *ow)
 {
   *(ow->port_dir) |= ow->pin;
@@ -95,7 +85,6 @@ inline void onewire_line_high(onewire_t *ow)
   *(ow->port_ren) &= ~ow->pin;
 }
 
-//#####################################################################
 
 inline void onewire_line_release(onewire_t *ow)
 {
