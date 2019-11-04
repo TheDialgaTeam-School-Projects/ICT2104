@@ -4,11 +4,14 @@
  * main.c
  */
 
-
+volatile float percentage;
 void main(void)
 {
     volatile unsigned int i;
     WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
+
+    P1->OUT &= ~BIT0;                       // Clear LED to start
+    P1->DIR |= BIT0;                        // Set P1.0/LED to output
 
     setup_CO2Sesnsor();
     // Enable global interrupt
@@ -36,7 +39,11 @@ void ADC14_IRQHandler(void)
 {
     if (ADC14->IFGR0)
     {
-        getCO2PPM();
+        percentage=getCO2percentage();
+        if(percentage>19.0)
+        {
+            P1->OUT |= BIT0;
+        }
         ADC14->CLRIFGR0;
     }
 }
