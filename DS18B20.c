@@ -1,7 +1,4 @@
 #include "msp.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 #include "delay.h"
 #include "onewire.h"
 
@@ -52,22 +49,14 @@ int main(void) {
              {
                  scratchpad[i] = onewire_read_byte(&ow); //Read the scratchpad bytes
              }
-#if TEMP_DEBUG
-    printf("\nTemp: 0x%x%x",scratchpad[1], scratchpad[0]);
-#endif
+
     temp_msb = scratchpad[1];
     temp_lsb = scratchpad[0];
     temp = (temp_msb << 8) + temp_lsb; //Create one 16bit number to modify
 
-    wholeTemp = (float)temp/16.0;
+    wholeTemp = (float)temp/16.0; // Temp C
 
-#if TEMP_DEBUG
-    printf( "\nTempC= %f degrees C", wholeTemp); // print temp. C
-#endif
-    temp_f = ((wholeTemp)* 9)/5 + 32;
-#if TEMP_DEBUG
-    printf( "\nTempF= %d degrees F\n", temp_f ); // print temp. F
-#endif
+    temp_f = ((wholeTemp)* 9)/5 + 32; // Temp F
 
       }
 

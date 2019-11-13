@@ -3,13 +3,11 @@
 void setup_CO2Sesnsor(void);
 float getADCresistance(void);
 float getCO2PPM(void);
+float getCO2percentage(void);
 
 void setup_CO2Sesnsor(void)
 {
     // GPIO Setup
-    P1->OUT &= ~BIT0;                       // Clear LED to start
-    P1->DIR |= BIT0;                        // Set P1.0/LED to output
-
     // Configure P6.0 for ADC
     P6->DIR &= ~BIT0;
     P6->SEL1 |= BIT0;
@@ -47,13 +45,30 @@ void setup_CO2Sesnsor(void)
 float getADCresistance(void)
 {
     unsigned int v = ADC14->MEM[0];
-    float r = (((4096.0 / (float) v) - 1.0) * 10.0);
+    /*
+     * This formulae calculate ADC resistance in Kohm's law
+     * 2^14 = 16384 is the max resolution output
+     * 10.0 is the max resistor load on the board
+     * */
+
+    float r = (((16384 / (float) v) - 1.0) * 10.0);
     return r;
 }
 
 float getCO2PPM(void)
 {
+    /*ppm value = CO2 max *(CO2min^(resistance/calibration of resistance at CO2 air)) */
     float ppm = 116.6020682 * pow((getADCresistance() / 76.63), -2.769034857);
     return ppm;
+}
+
+float getCO2percentage(void)
+  {
+    /*
+     * CO2 Percentage in current air is CO2ppm/100ppm
+     * 100ppm is the RS which is 100pm of NH3 in normal air
+     * */
+    float percent =(getCO2PPM()/100.0);
+    return percent;
 }
 
