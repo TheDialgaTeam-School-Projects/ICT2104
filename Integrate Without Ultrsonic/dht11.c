@@ -1,0 +1,69 @@
+#include "dht11.h"
+
+void readTempSensor(float * result) {
+
+    TIMER_A0->CTL = TIMER_A_CTL_TASSEL_2 |   // SMCLK
+                    TIMER_A_CTL_MC_2 |      // CONTINUOUS mode
+                    TIMER_A_CTL_CLR;       // Clear TAR
+
+    P1->SEL0 &= ~BIT7;
+    P1->SEL1 &= ~BIT7;
+    P1->DIR &= ~BIT7;
+    P1->REN |= BIT7;
+    P1->OUT |= BIT7;
+    __delay_cycles(3000); //1 milli-sec
+
+    P1->REN &= ~BIT7;
+    P1->DIR |= BIT7;
+    P1->OUT &= ~BIT7;
+    __delay_cycles(60000); //at least 18 milli-secs
+
+    P1->DIR &= ~BIT7;
+    P1->REN |= BIT7;
+    P1->OUT |= BIT7;
+    __delay_cycles(165); //55 micro-secs
+
+    while ((P1->IN & BIT7) != 0); // wait for 0
+
+
+    while ((P1->IN & BIT7) == 0); // wait for 1
+
+
+   int cycles[80]; // array of size 80 to capture 80 bits of '0's and '1's
+   int i;
+
+   while ((P1->IN & BIT7) != 0); // wait for 0
+
+   for (i = 0; i < 80; i += 2) {
+       TIMER_A0->CTL |= TIMER_A_CTL_CLR;
+       while ((P1->IN & BIT7) == 0); // waiting for 1 pluse
+       cycles[i] = TA0R;
+
+       TIMER_A0->CTL |= TIMER_A_CTL_CLR;
+       while ((P1->IN & BIT7) != 0); // waiting for 0 pluse
+       cycles[i + 1] = TA0R; // if data bit is 0 (20us) , 1 (70us)
+   }
+
+   unsigned char data[5];
+   for (i = 0; i < 40; ++i) {
+       uint32_t lowCycles = cycles[2 * i];
+       uint32_t highCycles = cycles[2 * i + 1];
+
+       data[i / 8] <<= 1; // shifting the bits into the array
+       // comparing low and high cycle time to see if the bit is a 0 or 1.
+       if (highCycles > lowCycles) {
+         // high cycle, bit is 1, save to array.
+         data[i / 8] |= 1;
+       }
+       /* else high cycles are less than (or equal to, a weird case),
+          cycle count must be a zero. No changed in stored data.*/
+     }
+
+   // check for checksum (error checking)
+   if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
+       result[0] = (float) data[2]; // temperature
+       result[1] = (int) data[0]; // humidity
+       return result;
+   }
+   return 0.0;
+}
