@@ -19,14 +19,17 @@ typedef struct {
     volatile uint8_t *echo_port_sel1;
     volatile uint8_t *echo_port_dir;
     uint16_t echo_port_pin;
+
+    uint16_t threshold;
+    uint32_t frequency;
 } hc_sr04_config;
 
-void initialize_ultrasonic_sensor(const hc_sr04_config *config, const uint16_t threshold);
-void trigger_ultrasonic_sensor(const hc_sr04_config *config);
+void initialize_ultrasonic_sensor(hc_sr04_config *config);
+void trigger_ultrasonic(void);
 
 uint8_t is_object_found(void);
-uint16_t get_object_distance(void);
 
 void TA0_N_IRQHandler(void);
+void TA1_N_IRQHandler(void);
 
 #endif

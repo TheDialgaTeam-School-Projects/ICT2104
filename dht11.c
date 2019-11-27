@@ -1,11 +1,8 @@
 #include "dht11.h"
-#include "msp.h"
 
-#define MIN_INTERVAL 2000
+void readTempSensor(float * result) {
 
-void readTempSensor(int * result) {
-
-    TIMER_A0->CTL = TIMER_A_CTL_TASSEL_2 |   // SMCLK
+    TIMER_A2->CTL = TIMER_A_CTL_TASSEL_2 |   // SMCLK
                     TIMER_A_CTL_MC_2 |      // CONTINUOUS mode
                     TIMER_A_CTL_CLR;       // Clear TAR
 
@@ -38,13 +35,13 @@ void readTempSensor(int * result) {
    while ((P1->IN & BIT7) != 0); // wait for 0
 
    for (i = 0; i < 80; i += 2) {
-       TIMER_A0->CTL |= TIMER_A_CTL_CLR;
+       TIMER_A2->CTL |= TIMER_A_CTL_CLR;
        while ((P1->IN & BIT7) == 0); // waiting for 1 pluse
-       cycles[i] = TA0R;
+       cycles[i] = TA2R;
 
-       TIMER_A0->CTL |= TIMER_A_CTL_CLR;
+       TIMER_A2->CTL |= TIMER_A_CTL_CLR;
        while ((P1->IN & BIT7) != 0); // waiting for 0 pluse
-       cycles[i + 1] = TA0R; // if data bit is 0 (20us) , 1 (70us)
+       cycles[i + 1] = TA2R; // if data bit is 0 (20us) , 1 (70us)
    }
 
    unsigned char data[5];
@@ -64,12 +61,9 @@ void readTempSensor(int * result) {
 
    // check for checksum (error checking)
    if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
-       result[0] = (int) data[2]; // temperature
+       result[0] = (float) data[2]; // temperature
        result[1] = (int) data[0]; // humidity
        return result;
    }
-   return 0;
+   return 0.0;
 }
-
-
-

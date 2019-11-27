@@ -12,6 +12,7 @@ typedef struct {
   } onewire_t;
 
 
+
 int onewire_reset(onewire_t *ow);
 void onewire_write_bit(onewire_t *ow, int bit);
 int onewire_read_bit(onewire_t *ow);

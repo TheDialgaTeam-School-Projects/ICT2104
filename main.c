@@ -1,12 +1,34 @@
 #include "msp.h"
+#include "clock.h"
+#include "sen0189.h"
+#include "MQ135.h"
+#include "DS18B20.h"
+#include "dht11.h"
 #include "hc_sr04.h"
-#include "timer32_delay.h"
+#include "relay.h"
 
-void stop_watchdog_timer(void);
+void setup_timer(void);
+void setup_led(void);
 
-void main(void)
+volatile signed int turbidity_percentage = 0;
+volatile float co2_percentage;
+volatile float dsb_temp; // in water
+volatile float dht_temp[2]; //[0] DHT11 temp, [1] DHT humidity
+
+volatile uint16_t time_a1 = 0;
+volatile uint16_t time_a3 = 0;
+
+int main(void)
 {
-    stop_watchdog_timer();
+    disable_watchdog();
+
+    setup_DCO();
+
+    setup_dsb();
+
+    setup_turbidity();                                     // Configure pins for SEN0189
+
+    setup_relay();
 
     hc_sr04_config config;
 
@@ -21,28 +43,165 @@ void main(void)
     config.echo_port_dir = &P2DIR;
     config.echo_port_pin = BIT4;
 
-    initialize_ultrasonic_sensor(&config, 400);
+    config.threshold = 14;
+    config.frequency = 12000000;
 
-    P1->SEL0 &= ~BIT0;
-    P1->SEL1 &= ~BIT0;
-    P1->DIR |= BIT0;
-    P1->OUT &= ~BIT0;
+    initialize_ultrasonic_sensor(&config);
 
-    __enable_interrupts();
+    setup_timer();
+    setup_led();
 
-    while (1) {
-        trigger_ultrasonic_sensor(&config);
-        delay_us(60000);
+    __enable_irq();                                        // Enable global interrupt
 
-        if (is_object_found()) {
-            P1->OUT |= BIT0;
-        } else {
-            P1->OUT &= ~BIT0;
+    __DSB();                                               // Ensures SLEEPONEXIT takes effect immediately
+
+    while (1)
+    {
+        if (turbidity_percentage >= 70 && co2_percentage > 20.0)
+        {
+            P2->OUT = BIT0;
+        }
+        else if (dht_temp[0] - dsb_temp > 3)
+        {
+            if (!(turbidity_percentage < 70 && co2_percentage > 20.0))
+            {
+                P2->OUT = BIT0 + BIT1;
+            }
+            else
+            {
+                P2->OUT = BIT1;
+            }
+        }
+        else
+        {
+            P2->OUT = BIT1;
         }
     }
 }
 
-void stop_watchdog_timer(void)
+void setup_led(void)
 {
-    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;
+    // PxSEL0/1 = 0 (Simple I/O)
+    P2->SEL0 &= ~(BIT0 + BIT1 + BIT2);
+    P2->SEL1 &= ~(BIT0 + BIT1 + BIT2);
+
+    /*
+     * LED 2 - RED 2.0 | Green 2.1 | Blue 2.2
+     * P2->DIR |= BIT0 + BIT1 + BIT2; (Output)
+     * P2->OUT = BIT0; (RED)
+     * P2->OUT = BIT1; (Green)
+     * P2->OUT = BIT2; (Blue)
+     * P2->OUT = BIT0 + BIT1; (Yellow)
+     * P2->OUT = BIT0 + BIT2; (Purple)
+     * P2->OUT = BIT1 + BIT2; (Cyan)
+     * P2->OUT = BIT0 + BIT1 + BIT2; (White)
+     */
+    P2->DIR |= BIT0 + BIT1 + BIT2;
+}
+
+void setup_timer(void)
+{
+    /*
+     * Timer A1 Control Register
+     * TASSEL: SMCLK
+     * ID: Input divider for clock /1
+     * MC: Up mode
+     * TACLR: Clear
+     * TAIE: Enable overflow interrupt
+     */
+    TIMER_A1->CTL |= TASSEL_2 | ID_0 | MC_1 | TACLR | TAIE;
+
+    /*
+     * Timer A1 Up mode counter.
+     * Count to 1ms.
+     */
+    TIMER_A1->CCR[0] = 12000000 / 1000;
+
+    NVIC->ISER[0] |= 1 << ((TA1_N_IRQn) & 31);
+
+    /*
+     * Timer A3 Control Register
+     * TASSEL: SMCLK
+     * ID: Input divider for clock /1
+     * MC: Up mode
+     * TACLR: Clear
+     * TAIE: Enable overflow interrupt
+     */
+    TIMER_A3->CTL |= TASSEL_2 | ID_0 | MC_1 | TACLR | TAIE;
+
+    /*
+     * Timer A3 Up mode counter.
+     * Count to 1ms.
+     */
+    TIMER_A3->CCR[0] = 12000000 / 1000;
+
+    NVIC->ISER[0] |= 1 << ((TA3_N_IRQn) & 31);
+}
+
+void TA1_N_IRQHandler(void)
+{
+    if (TIMER_A1->CTL & TIMER_A_CTL_IFG) {
+        // 1ms trigger.
+        time_a1++;
+
+        if (time_a1 >= 60) {
+            // if 60ms has passed.
+            time_a1 = 0;
+
+            // Start sampling/conversion
+            ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
+
+            trigger_ultrasonic();
+        }
+
+        TIMER_A1->CTL &= ~TIMER_A_CTL_IFG;
+    }
+}
+
+void TA3_N_IRQHandler(void)
+{
+    if (TIMER_A3->CTL & TIMER_A_CTL_IFG) {
+        // 1ms trigger.
+        time_a3++;
+
+        if (time_a3 >= 1000) {
+            // if 1s has passed.
+            time_a3 = 0;
+
+            dsb_temp = read_dsb();
+            readTempSensor(dht_temp);
+        }
+
+        TIMER_A3->CTL &= ~TIMER_A_CTL_IFG;
+    }
+}
+
+// ADC14 interrupt service routine
+void ADC14_IRQHandler(void)
+{
+    if ((ADC14->IFGR0 & ADC14_IFGR0_IFG0) == ADC14_IFGR0_IFG0)
+    {
+        volatile unsigned short turbidityADC_value = ADC14->MEM[0];
+        float adc_Volt = ((3.3 * turbidityADC_value)/(16384.0));     //Vr+ = AVcc = 3.3V, Vr- = AVss = GND
+        turbidity_percentage = calculate_turbidity(adc_Volt, voltCLEAR);
+
+        if (turbidity_percentage >= 70) {                                  //Red LED, high turbidity_percentage
+            activate_relay();
+        } else {                                                  //Greed LED, low turbidity_percentage
+            deactivate_relay();
+        }
+
+        setup_CO2Sesnsor();
+
+        ADC14->CLRIFGR0 &= ~ADC14_IFGR0_IFG0;
+    }
+
+    if ((ADC14->IFGR0 & ADC14_IFGR0_IFG1) == ADC14_IFGR0_IFG1)
+    {
+        co2_percentage = getCO2percentage();
+
+        setup_turbidity();
+
+        ADC14->CLRIFGR0 &= ~ADC14_IFGR0_IFG1;
+    }
 }

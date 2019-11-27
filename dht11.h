@@ -1,3 +1,5 @@
 #include "msp.h"
 
-void readTempSensor(int * result);
+#define MIN_INTERVAL 2000
+
+void readTempSensor(float * result);
