@@ -15,14 +15,14 @@ volatile float co2_percentage;
 volatile float dsb_temp; // in water
 volatile float dht_temp[2]; //[0] DHT11 temp, [1] DHT humidity
 
-volatile uint16_t time_a1 = 0;
-volatile uint16_t time_a3 = 0;
+volatile uint16_t timer_a1 = 0;
+volatile uint16_t timer_a3 = 0;
 
 int main(void)
 {
     disable_watchdog();
 
-    setup_DCO();
+    setup_dco();
 
     setup_dsb();
 
@@ -142,11 +142,11 @@ void TA1_N_IRQHandler(void)
 {
     if (TIMER_A1->CTL & TIMER_A_CTL_IFG) {
         // 1ms trigger.
-        time_a1++;
+        timer_a1++;
 
-        if (time_a1 >= 60) {
+        if (timer_a1 >= 60) {
             // if 60ms has passed.
-            time_a1 = 0;
+            timer_a1 = 0;
 
             // Start sampling/conversion
             ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
@@ -162,11 +162,11 @@ void TA3_N_IRQHandler(void)
 {
     if (TIMER_A3->CTL & TIMER_A_CTL_IFG) {
         // 1ms trigger.
-        time_a3++;
+        timer_a3++;
 
-        if (time_a3 >= 1000) {
+        if (timer_a3 >= 1000) {
             // if 1s has passed.
-            time_a3 = 0;
+            timer_a3 = 0;
 
             dsb_temp = read_dsb();
             readTempSensor(dht_temp);
@@ -181,9 +181,7 @@ void ADC14_IRQHandler(void)
 {
     if ((ADC14->IFGR0 & ADC14_IFGR0_IFG0) == ADC14_IFGR0_IFG0)
     {
-        volatile unsigned short turbidityADC_value = ADC14->MEM[0];
-        float adc_Volt = ((3.3 * turbidityADC_value)/(16384.0));     //Vr+ = AVcc = 3.3V, Vr- = AVss = GND
-        turbidity_percentage = calculate_turbidity(adc_Volt, voltCLEAR);
+        turbidity_percentage = calculate_turbidity(ADC14->MEM[0]);
 
         if (turbidity_percentage >= 70) {                                  //Red LED, high turbidity_percentage
             activate_relay();

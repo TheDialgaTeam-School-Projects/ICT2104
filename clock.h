@@ -1,4 +1,4 @@
 #include "msp.h"
 
-void setup_DCO(void);
+void setup_dco(void);
 void disable_watchdog(void);

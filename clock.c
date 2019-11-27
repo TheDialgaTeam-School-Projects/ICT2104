@@ -1,6 +1,6 @@
 #include "clock.h"
 
-void setup_DCO(void)
+void setup_dco(void)
 {
     CS->KEY = CS_KEY_VAL;                   // Unlock CS module for register access
     CS->CTL0 = 0;                           // Reset tuning parameters

@@ -29,7 +29,8 @@ void setup_turbidity(void)
 }
 
 //Calculate turbidity %. Higher the percentage, the higher the turbidity of water.
-int calculate_turbidity(float adcVoltage, float clearVoltage){
+int calculate_turbidity(short turbidityADC_value){
 
-    return 100 - (adcVoltage/clearVoltage) * 100;
+    float adc_Volt = ((3.3 * turbidityADC_value)/(16384.0));
+    return 100 - (adc_Volt/volt_clear) * 100;
 }

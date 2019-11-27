@@ -9,7 +9,7 @@
 
 #define DATA_PORT P4
 #define DATA_PIN BIT0
-#define voltCLEAR 3.3f
+#define volt_clear 3.3f
 
 void setup_turbidity(void);
-int calculate_turbidity(float adcVoltage, float clearVoltage);
+int calculate_turbidity(short turbidityADC_value);
