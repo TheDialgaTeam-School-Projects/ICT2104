@@ -1,0 +1,1 @@
+"./DS18B20.obj" "./MQ135.obj" "./clock.obj" "./dht11.obj" "./hc_sr04.obj" "./main.obj" "./onewire.obj" "./relay.obj" "./sen0189.obj" "./startup_msp432p401r_ccs.obj" "./system_msp432p401r.obj" "./testing.obj" "../msp432p401r.cmd" -llibc.a 

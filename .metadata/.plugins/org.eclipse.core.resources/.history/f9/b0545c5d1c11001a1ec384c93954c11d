@@ -1,0 +1,25 @@
+
+
+void LED(float tempDHT, float tempDSB, float turbidity_percentage, float co2_percentage, bool object_found){
+
+    if (turbidity_percentage >= 70 && co2_percentage > 20.0)
+    {
+        P2->OUT = BIT0;
+    }
+    else if (tempDHT - tempDSB > 3)
+    {
+        if (!(turbidity_percentage < 70 && co2_percentage > 20.0))
+        {
+            P2->OUT = BIT0 + BIT1;
+        }
+        else
+        {
+            P2->OUT = BIT1;
+        }
+    }
+    else
+    {
+        P2->OUT = BIT1;
+    }
+
+}
