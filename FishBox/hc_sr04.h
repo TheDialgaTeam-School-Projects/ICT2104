@@ -30,6 +30,5 @@ void trigger_ultrasonic(void);
 uint8_t is_object_found(void);
 
 void TA0_N_IRQHandler(void);
-void TA1_N_IRQHandler(void);
 
 #endif
